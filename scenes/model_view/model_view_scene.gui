@@ -1,0 +1,24 @@
+script: "/scenes/model_view/model_view_scene.gui_script"
+fonts {
+  name: "game_font"
+  font: "/assets/fonts/game_font.font"
+}
+textures {
+  name: "gui"
+  texture: "/assets/images/gui.atlas"
+}
+background_color {
+  x: 0.0
+  y: 0.0
+  z: 0.0
+  w: 0.0
+}
+layers {
+  name: "below"
+}
+layers {
+  name: "text"
+}
+material: "/builtins/materials/gui.material"
+adjust_reference: ADJUST_REFERENCE_PARENT
+max_nodes: 1024

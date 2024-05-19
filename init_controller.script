@@ -1,0 +1,93 @@
+local COMMON = require "libs.common"
+local Sm = require "libs.sm.scene_manager"
+local SCENE_LOADER = require "libs.sm.scene_loader"
+
+local SCENES = {
+	require "scenes.model_view.model_view_scene",
+}
+---@class ScriptMain
+local Script = COMMON.new_n28s()
+
+function Script:scenes_register()
+	local sm = Sm()
+
+	sm.SCENES = {
+		MODEL_VIEW = "ModelView",
+	}
+
+	local reg_scenes = {}
+	for i, v in ipairs(SCENES) do reg_scenes[i] = v() end --create instances
+	sm:register(reg_scenes)
+
+	SM = sm
+end
+
+function Script:init_random()
+	math.randomseed(os.time())
+	math.random()
+	math.random()
+	math.random()
+end
+
+function Script:init()
+	local error_table = {}
+	sys.set_error_handler(function(source, message, traceback)
+		-- Concatenate all args to make the error string like that:
+		-- lua: example/poki-sdk.gui_script:86: attempt to index global 'dsf' (a nil value)
+		-- stack traceback:
+		-- [C]:-1: in function set_position
+		--     example/poki-sdk.gui_script:31: in function <example/poki-sdk.gui_script:18>
+		local new_error_string = tostring(source) .. ": " .. tostring(message) .. "\n" .. tostring(traceback)
+		if (not error_table[new_error_string]) then
+			error_table[new_error_string] = true
+			COMMON.e(new_error_string)
+		end
+	end)
+
+	self.url = msg.url()
+
+	COMMON.CONTEXT:register(COMMON.CONTEXT.NAMES.MAIN, self)
+
+	self:scenes_register()
+	self:init_random()
+
+	--load crash
+	local handle = crash.load_previous()
+	if handle then
+		COMMON.e(crash.get_extra_data(handle))
+		crash.release(handle)
+	end
+
+	window.set_listener(function(_, event, data)
+		COMMON.EVENTS.WINDOW_EVENT:trigger(event, data)
+	end)
+
+	COMMON.i("init time:" .. COMMON.get_time() - COMMON.GLOBAL.time_init_start)
+
+	msg.post(self.url, COMMON.HASHES.INPUT.ACQUIRE_FOCUS)
+	SM:show(SM.SCENES.MODEL_VIEW)
+end
+
+function Script:update(dt)
+	--init input always on top
+	msg.post(self.url, COMMON.HASHES.INPUT.ACQUIRE_FOCUS)
+	SM:update(dt)
+end
+
+function Script:final()
+	COMMON.INPUT.clear()
+	COMMON.CONTEXT:unregister(COMMON.CONTEXT.NAMES.MAIN)
+end
+
+function Script:on_input(action_id, action)
+	COMMON.INPUT.handle_pressed_keys(action_id, action)
+	COMMON.INPUT.global_on_input(action_id, action)
+end
+
+function Script:on_message(message_id, message, sender)
+	if (message_id == COMMON.HASHES.MSG.LOADING.PROXY_LOADED) then
+		SCENE_LOADER.load_done(sender)
+	end
+end
+
+COMMON.N28S.register(Script())

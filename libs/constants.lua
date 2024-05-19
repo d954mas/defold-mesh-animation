@@ -1,0 +1,49 @@
+local lume = require "libs.lume"
+
+local M = {}
+
+M.SYSTEM_INFO = sys.get_sys_info({ignore_secure = true})
+M.PLATFORM = M.SYSTEM_INFO.system_name
+M.PLATFORM_IS_WEB = M.PLATFORM == "HTML5"
+M.PLATFORM_IS_WINDOWS = M.PLATFORM == "Windows"
+M.PLATFORM_IS_LINUX = M.PLATFORM == "Linux"
+M.PLATFORM_IS_MACOS = M.PLATFORM == "Darwin"
+M.PLATFORM_IS_ANDROID = M.PLATFORM == "Android"
+M.PLATFORM_IS_IPHONE = M.PLATFORM == "iPhone OS"
+
+M.PLATFORM_IS_PC = M.PLATFORM_IS_WINDOWS or M.PLATFORM_IS_LINUX or M.PLATFORM_IS_MACOS
+M.PLATFORM_IS_MOBILE = M.PLATFORM_IS_ANDROID or M.PLATFORM_IS_IPHONE
+
+M.PROJECT_VERSION = sys.get_config("project.version")
+
+M.GAME_VERSION = sys.get_config("game.version")
+
+M.VERSION_IS_DEV = M.GAME_VERSION == "dev"
+M.VERSION_IS_RELEASE = M.GAME_VERSION == "release"
+
+M.GAME_TARGET = sys.get_config("game.target")
+
+M.TARGETS = {
+	EDITOR = "editor",
+	OTHER = "other",
+	PLAY_MARKET = "play_market",
+	POKI = "poki",
+}
+
+M.GUI_ORDER = {
+	BASE = 1
+}
+
+assert(lume.find(M.TARGETS, M.GAME_TARGET), "unknown target:" .. M.GAME_TARGET)
+
+M.TARGET_IS_EDITOR = M.GAME_TARGET == M.TARGETS.EDITOR
+M.TARGET_IS_PLAY_MARKET = M.GAME_TARGET == M.TARGETS.PLAY_MARKET
+M.TARGET_IS_POKI = M.GAME_TARGET == M.TARGETS.POKI
+M.TARGET_OTHER = M.GAME_TARGET == M.TARGETS.OTHER
+
+
+
+
+
+
+return M

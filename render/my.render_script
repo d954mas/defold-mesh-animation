@@ -1,0 +1,145 @@
+local COMMON = require "libs.common"
+local CAMERAS = require "libs_project.cameras"
+
+
+local HASH_WINDOW_RESIZED = hash("window_resized")
+local TAG = "Render"
+
+---@class Render
+local Render = COMMON.new_n28s()
+
+function Render:init()
+	COMMON.RENDER = self
+	self.screen_size = {
+		w = nil, h = nil, aspect = nil
+	}
+	self.config_size = {
+		w = render.get_width(),
+		h = render.get_height()
+	}
+
+	self.gui_scale = {
+		mode = gui.ADJUST_FIT,
+		scale = vmath.vector3(1),
+		scale2 = vmath.vector3(1),
+		scale3 = vmath.vector3(1)
+	}
+
+	self:init_predicates()
+	self:init_draw_opts()
+	self.clear = { [render.BUFFER_COLOR_BIT] = COMMON.LUME.color_parse_hexRGBA("#636274"), [render.BUFFER_DEPTH_BIT] = 1, [render.BUFFER_STENCIL_BIT] = 0 }
+	self:calculate_screen_size()
+	self:window_size_changed()
+	CAMERAS:init()
+end
+
+function Render:init_draw_opts()
+	self.draw_opts = {
+		constants = render.constant_buffer(),
+	}
+end
+
+function Render:init_predicates()
+	self.predicates = {
+		tile = render.predicate({ "tile" }),
+		model = render.predicate({ "model" }),
+		gui = render.predicate({ "gui" }),
+	}
+end
+
+function Render:window_size_changed()
+	self.gui_proj = vmath.matrix4_orthographic(0, self.screen_size.w, 0, self.screen_size.h, -1, 1)
+	self.empty_view = vmath.matrix4()
+
+	local gui_scale = 1
+	local gui_scale_2 = 1
+	local gui_scale_3 = 1
+
+	if COMMON.RENDER.screen_size.aspect < 0.65625 then
+		local scale_target = (16 / 9) / (0.65625)
+		local scale_current = (16 / 9) / (COMMON.RENDER.screen_size.aspect)
+		gui_scale = scale_target / scale_current
+	end
+	if COMMON.RENDER.screen_size.aspect < 3 / 4 then
+		local scale_target = (16 / 9) / (3 / 4)
+		local scale_current = (16 / 9) / (COMMON.RENDER.screen_size.aspect)
+		gui_scale_2 = scale_target / scale_current
+	end
+
+	if COMMON.RENDER.screen_size.aspect < 3.5 / 4 then
+		local scale_target = (16 / 9) / (3.5 / 4)
+		local scale_current = (16 / 9) / (COMMON.RENDER.screen_size.aspect)
+		gui_scale_3 = scale_target / scale_current
+	end
+
+	self.gui_scale.mode = COMMON.RENDER.screen_size.aspect >= 16 / 9 and gui.ADJUST_FIT or gui.ADJUST_ZOOM
+	self.gui_scale.scale.x, self.gui_scale.scale.y, self.gui_scale.scale.z = gui_scale, gui_scale, gui_scale
+	self.gui_scale.scale2.x, self.gui_scale.scale2.y, self.gui_scale.scale2.z = gui_scale_2, gui_scale_2, gui_scale_2
+	self.gui_scale.scale3.x, self.gui_scale.scale3.y, self.gui_scale.scale3.z = gui_scale_3, gui_scale_3, gui_scale_3
+
+	CAMERAS:window_resized()
+
+end
+
+function Render:calculate_screen_size()
+	self.screen_size.w = render.get_window_width()
+	self.screen_size.h = render.get_window_height()
+	if (self.screen_size.w == 0) then self.screen_size.w = 1 end
+	if (self.screen_size.h == 0) then self.screen_size.h = 1 end
+	self.screen_size.aspect = self.screen_size.w / self.screen_size.h
+end
+
+function Render:on_message(message_id)
+	if message_id == HASH_WINDOW_RESIZED then
+		local prev_w = self.screen_size.w
+		local prev_h = self.screen_size.h
+		self:calculate_screen_size()
+
+		if (prev_w ~= self.screen_size.w or prev_h ~= self.screen_size.h) then
+			COMMON.i("screen size changed. from " .. "w:" .. prev_w .. " h:" .. prev_h
+					.. " to w:" .. self.screen_size.w .. " h:" .. self.screen_size.h, TAG)
+			self:window_size_changed()
+			COMMON.EVENTS.WINDOW_RESIZED:trigger()
+		end
+	end
+end
+
+function Render:update(dt)
+	render.disable_state(render.STATE_STENCIL_TEST)
+	render.disable_state(render.STATE_DEPTH_TEST)
+	render.disable_state(render.STATE_CULL_FACE)
+	render.enable_state(render.STATE_BLEND)
+	render.set_blend_func(render.BLEND_SRC_ALPHA, render.BLEND_ONE_MINUS_SRC_ALPHA)
+
+	render.set_depth_mask(true)
+	render.set_stencil_mask(0xff)
+	render.clear(self.clear)
+	render.set_depth_mask(false)
+
+	local view = CAMERAS.game_camera:get_view()
+	local proj = CAMERAS.game_camera:get_proj()
+
+	render.set_viewport(CAMERAS.game_camera.viewport.x, CAMERAS.game_camera.viewport.y,
+			CAMERAS.game_camera.viewport.width, CAMERAS.game_camera.viewport.height)
+	render.set_view(view)
+	render.set_projection(proj)
+
+	render.set_depth_mask(true)
+	render.enable_state(render.STATE_CULL_FACE)
+	render.draw(self.predicates.model,self.draw_opts)
+	render.set_depth_mask(false)
+	render.disable_state(render.STATE_CULL_FACE)
+
+	render.draw(self.predicates.tile, self.draw_opts)
+
+	render.draw_debug3d()
+
+	-- GUI Rendering
+	render.enable_state(render.STATE_STENCIL_TEST)
+	render.set_view(self.empty_view)
+	render.set_projection(self.gui_proj)
+	render.draw(self.predicates.gui)
+	render.disable_state(render.STATE_STENCIL_TEST)
+end
+
+COMMON.N28S.register(Render())

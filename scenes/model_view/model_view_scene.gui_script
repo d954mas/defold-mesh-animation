@@ -1,0 +1,33 @@
+local COMMON = require "libs.common"
+local BaseGuiScript = require "libs_project.scripts.base_gui_script"
+
+---@class GameSceneGuiScript:GuiScriptBase
+local Script = COMMON.class("GameSceneGuiScript", BaseGuiScript)
+
+function Script:init()
+	BaseGuiScript.init(self, { context_name = COMMON.CONTEXT.NAMES.GAME_GUI, scene = SM:get_scene_by_name(SM.SCENES.MODEL_VIEW) })
+end
+
+function Script:bind_vh()
+	self.vh = {
+
+	}
+	self.views = {
+
+	}
+end
+
+function Script:init_gui()
+	BaseGuiScript.init_gui(self)
+	gui.set_render_order(COMMON.CONSTANTS.GUI_ORDER.BASE)
+end
+
+function Script:on_input(action_id, action)
+
+end
+
+function Script:on_resize()
+
+end
+
+COMMON.N28S.register(Script())
